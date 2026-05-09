@@ -1,0 +1,16 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env
+
+# VS Code directory
+.vscode/
+
+# Ignore processed data if not meant to be tracked (uncomment if you want to ignore data)
+# data/processed/*.csv

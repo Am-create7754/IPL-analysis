@@ -6,7 +6,9 @@ import sys
 SCRIPTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'scripts')
 sys.path.append(SCRIPTS_DIR)
 
+# pyrefly: ignore [missing-import]
 from main import load_data
+# pyrefly: ignore [missing-import]
 from query_engine import handle_query
 
 # Page config
