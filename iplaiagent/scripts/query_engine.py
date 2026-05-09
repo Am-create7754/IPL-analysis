@@ -53,7 +53,17 @@ def handle_query(query: str, df):
     try:
         agent = get_agent(df)
         print("\n[Dynamic Agent is running... this may take a few seconds]")
-        response = agent.invoke(query)
+        
+        # Give the agent instructions to handle name variations
+        enhanced_query = (
+            "IMPORTANT RULES FOR DATASET:\n"
+            "1. Player names use initials (e.g., 'RG Sharma', 'V Kohli'). NEVER use exact matching like `== 'Rohit Sharma'`.\n"
+            "2. ALWAYS use partial matching like `str.contains('Sharma', case=False, na=False)` when filtering by a player's name.\n"
+            "3. df1 contains match info (season, date). df2 and df3 contain ball-by-ball info (striker, bowler, batsman_runs, etc.). To get stats for a season, merge/filter across them using match_id.\n\n"
+            f"User Question: {query}"
+        )
+        
+        response = agent.invoke(enhanced_query)
         return response["output"]
     except Exception as e:
         return f"Dynamic Agent Error: {e}"
