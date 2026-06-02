@@ -106,3 +106,98 @@ def get_player_matchup(df, batter, bowler):
         'balls': balls,
         'dismissals': dismissals
     }
+
+def get_fitness_impact(query: str, dfs: dict):
+    """
+    Evaluates performance vectors post-injury (Pillar 1).
+    """
+    if 'fitness' not in dfs or 'ipl' not in dfs or 'matches' not in dfs:
+        return "Missing required datasets for fitness impact analysis."
+        
+    import re
+    # Extract player name from query like "How did Virat Kohli perform after injury?"
+    # We will just try to resolve names from the query against the player list.
+    all_players = pd.concat([dfs['ipl']['striker'], dfs['ipl']['bowler']]).dropna().unique()
+    
+    player_found = None
+    for p in all_players:
+        if str(p).lower() in query.lower():
+            player_found = p
+            break
+            
+    if not player_found:
+        return "Could not identify a player in your query for fitness analysis."
+        
+    fitness_df = dfs['fitness']
+    player_fitness = fitness_df[fitness_df['player_name'] == player_found]
+    
+    if player_fitness.empty:
+        return f"No injury records found for {player_found}."
+        
+    injury_record = player_fitness.iloc[0]
+    injury_date = pd.to_datetime(injury_record['injury_date'])
+    clearance_date = pd.to_datetime(injury_record['clearance_date'])
+    
+    # Merge matches to get dates in IPL data
+    matches_df = dfs['matches'][['id', 'date']].copy()
+    matches_df.rename(columns={'id': 'match_id'}, inplace=True)
+    matches_df['date'] = pd.to_datetime(matches_df['date'], errors='coerce')
+    
+    ipl_df = dfs['ipl'].merge(matches_df, on='match_id', how='left')
+    ipl_df.dropna(subset=['date'], inplace=True)
+    
+    # Slicing
+    before_df = ipl_df[ipl_df['date'] < injury_date]
+    after_df = ipl_df[ipl_df['date'] >= clearance_date]
+    
+    output = f"### 🏥 Player Fitness Impact: {player_found} `[Simulated Vector]`\n"
+    output += f"- **Injury Type:** {injury_record['injury_type']}\n"
+    output += f"- **Injury Date:** {injury_date.strftime('%Y-%m-%d')}\n"
+    output += f"- **Clearance Date:** {clearance_date.strftime('%Y-%m-%d')}\n\n"
+    
+    # Batting Stats
+    b_before = before_df[before_df['striker'] == player_found]
+    b_after = after_df[after_df['striker'] == player_found]
+    
+    if not b_before.empty or not b_after.empty:
+        output += "#### 🏏 Batting Impact\n"
+        runs_b = b_before['runs_off_bat'].sum() if not b_before.empty else 0
+        balls_b = len(b_before)
+        sr_b = (runs_b / balls_b * 100) if balls_b > 0 else 0
+        
+        runs_a = b_after['runs_off_bat'].sum() if not b_after.empty else 0
+        balls_a = len(b_after)
+        sr_a = (runs_a / balls_a * 100) if balls_a > 0 else 0
+        
+        bat_data = {
+            "Phase": ["Before Injury", "After Clearance"],
+            "Runs": [runs_b, runs_a],
+            "Balls": [balls_b, balls_a],
+            "Strike Rate": [f"{sr_b:.1f}", f"{sr_a:.1f}"]
+        }
+        output += pd.DataFrame(bat_data).to_markdown(index=False) + "\n\n"
+        
+    # Bowling Stats
+    bw_before = before_df[before_df['bowler'] == player_found]
+    bw_after = after_df[after_df['bowler'] == player_found]
+    
+    if not bw_before.empty or not bw_after.empty:
+        output += "#### 🎯 Bowling Impact\n"
+        runs_b = bw_before['total_runs'].sum() if not bw_before.empty else 0
+        balls_b = len(bw_before)
+        wkt_b = bw_before['is_wicket'].sum() if not bw_before.empty else 0
+        econ_b = (runs_b / (balls_b / 6)) if balls_b > 0 else 0
+        
+        runs_a = bw_after['total_runs'].sum() if not bw_after.empty else 0
+        balls_a = len(bw_after)
+        wkt_a = bw_after['is_wicket'].sum() if not bw_after.empty else 0
+        econ_a = (runs_a / (balls_a / 6)) if balls_a > 0 else 0
+        
+        bowl_data = {
+            "Phase": ["Before Injury", "After Clearance"],
+            "Wickets": [wkt_b, wkt_a],
+            "Economy": [f"{econ_b:.2f}", f"{econ_a:.2f}"]
+        }
+        output += pd.DataFrame(bowl_data).to_markdown(index=False) + "\n\n"
+        
+    return output
