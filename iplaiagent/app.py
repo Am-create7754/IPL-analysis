@@ -527,7 +527,7 @@ if bio_query and not bio_df.empty:
             found_players.append(p)
             
     if found_players:
-        st.title("⚡ AntiGravity: Biomechanical Telemetry Suite")
+        st.title("⚡Biomechanical Telemetry Suite")
         
         # --- HEAD-TO-HEAD COMPARISON (If multiple players) ---
         if len(found_players) >= 2:
