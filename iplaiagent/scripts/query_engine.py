@@ -8,6 +8,7 @@ from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe
 from simulation_engine import handle_simulation_query
 from situational_engine import parse_and_execute_situational_query
 from stats_engine import get_fitness_impact
+from orchestrator import run_orchestrator
 
 # Initialize the dynamic LLM agent globally so it is reused across queries
 _agent = None
@@ -34,6 +35,11 @@ def handle_query(query: str, dfs: dict):
     and sends everything else to the dynamic LLM Pandas Agent.
     """
     q_lower = query.lower()
+    
+    # 0. Intercept and run PROACTIVE ORCHESTRATOR FIRST (Player specific logic)
+    orchestrator_res = run_orchestrator(query, dfs)
+    if orchestrator_res:
+        return orchestrator_res
     
     # 0. Intercept Simulation Queries (Pillar 3)
     if "!simulate" in q_lower:
@@ -75,7 +81,8 @@ def handle_query(query: str, dfs: dict):
             "IMPORTANT RULES FOR DATASET:\n"
             "1. Player names use initials (e.g., 'RG Sharma', 'V Kohli'). NEVER use exact matching like `== 'Rohit Sharma'`.\n"
             "2. ALWAYS use partial matching like `str.contains('Sharma', case=False, na=False)` when filtering by a player's name.\n"
-            "3. df1 is typically matches.csv. The other dataframes might be ipl_all_matches.csv, player_profile, fitness, etc.\n\n"
+            "3. df1 is typically matches.csv. The other dataframes might be ipl_all_matches.csv, player_profile, fitness, etc.\n"
+            "4. **DEEP RESEARCH PROTOCOL**: If the data is NOT available in the provided CSVs, or if the user asks a deep analytical question, you MUST use your own internal knowledge base to answer it comprehensively. Act as an elite sports intelligence agent. Do not just fail; supplement with your own knowledge.\n\n"
             f"User Question: {query}"
         )
         
